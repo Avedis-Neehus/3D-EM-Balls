@@ -240,7 +240,7 @@ class Ball(object):
             unitradius = np.zeros(3)
 
         if np.linalg.norm(radius) != 0 and np.dot(unitradius, self.velocity)!=1:
-            charge      = self.ladung / (1 - np.dot(unitradius, self.velocity) ** 3)
+            charge      = self.ladung / ((1 - np.dot(unitradius, self.velocity)/2) ** 3)
             
 
             if radius < self.mass:
