@@ -168,7 +168,7 @@ class pointer(object):
 
 
 class Ball(object):
-    def __init__(self, m,q, V = np.array([0,0,0], dtype = float), X = np.array([0,0,0],dtype = float), c = vector(255,0,0)):
+    def __init__(self, m,q, V = np.array([0,0,0], dtype = float), X = np.array([0,0,0],dtype = float), col = vector(255,0,0)):
         self.position = X
         self.position_2 = X
         self.velocity = V
@@ -176,7 +176,7 @@ class Ball(object):
         self.acceleration = np.array([0.,0.,0.], dtype = float)
         self.mass = m
         self.ladung = q
-        self.color = c
+        self.color = col
         self.manifest= sphere(pos = vector(self.position[0],self.position[1],self.position[2] ), radius = 10, color = self.color)
 
     def acceleration_compute(self,force):
@@ -240,7 +240,7 @@ class Ball(object):
             unitradius = np.zeros(3)
 
         if np.linalg.norm(radius) != 0 and np.dot(unitradius, self.velocity)!=1:
-            charge      = self.ladung / ((1 - np.dot(unitradius, self.velocity)/2) ** 3)
+            charge      = self.ladung / ((1 - (np.dot(unitradius, self.velocity)/c)) ** 3)
             
 
             if radius < self.mass:
