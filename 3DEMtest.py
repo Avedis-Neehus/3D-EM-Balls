@@ -335,7 +335,7 @@ while not crashed :
         for bally2 in ballys[i+1:]:
                 
             #checks collisions
-            if  np.linalg.norm(bally.position - bally2.position) <= bally.mass  + bally2.mass  :
+            if  np.linalg.norm(bally.position - bally2.position) <= bally.radius  + bally2.radius  :
 
                 bally.velocity_2 = (bally.mass * bally.velocity + bally2.mass * bally2.velocity + bally2.mass *(bally2.velocity - bally.velocity))/ (bally.mass + bally2.mass)
                 bally2.velocity_2 = (bally.mass * bally2.velocity + bally.mass * bally.velocity + bally.mass *(bally.velocity - bally2.velocity))/ (bally2.mass + bally.mass)
