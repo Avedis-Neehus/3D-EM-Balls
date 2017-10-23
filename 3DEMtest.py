@@ -2,10 +2,11 @@
 from vpython import *
 import random as r
 import numpy as np
-import scipy 
+from collections import deque
+from copy import deepcopy 
  
 
-c = 3*10**6
+c = 3*10**8
 epsilon = 8.854187817 * 10**(-12)
 mu = 4*np.pi *10**(-7)
 
@@ -14,11 +15,6 @@ display = { 'width' : 200,
             'height' : 200,
             'length' : 200}
 
-scene2 = canvas(title='Examples of Tetrahedrons',
-     width=600, height=200,
-     center=vector(5,0,0), background=color.cyan)
-
-scene2.userspin = True
 
 wallR = box(pos= vector(display['width']/2,0,0), size=vector(0.2,200,200), color=color.green)
 wallL = box(pos=vector(-display['width']/2,0,0), size= vector(0.2,200,200), color=color.green)
@@ -69,8 +65,22 @@ def matrix_on_vector(matrix, vector):
 def tot_EM_field_at_charge(location):
 
     EM = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
+    def retarded_ballys(history):
 
-    for q in ballys:
+        new_ballys = np.zeros(Ball_num, dtype = object)
+
+        for i in range(Ball_num):
+
+            for j in  range(len(history)):
+                if np.linalg.norm(location-history[j][i].position)< c*j*dt:
+
+                    new_ballys[i]= history[j][i]
+                    break
+                new_ballys[i] = ballys[i]
+
+        return np.array(new_ballys)
+
+    for q in retarded_ballys(hist):
 
         EM = EM + q.EM_field(location)
 
@@ -304,8 +314,9 @@ repulsion = np.array([0.,0.,0.])
 angularVector = np.array([0.,0.,2])
 crashed = False
 index = 0
+hist = deque(maxlen = int(1/dt))
 while not crashed :
-
+    hist.appendleft(deepcopy(ballys))
     rate(30)
    
 
