@@ -238,7 +238,7 @@ class Ball(object):
             charge      = self.ladung / ((1 - (np.dot(unitradius, self.velocity)/c)) ** 3)
             
 
-            if radius < self.mass:
+            if radius < self.radius:
                 radius = self.ladung
 
             radius2     = radius ** 2
