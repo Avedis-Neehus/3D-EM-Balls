@@ -14,11 +14,6 @@ display = { 'width' : 200,
             'height' : 200,
             'length' : 200}
 
-scene2 = canvas(title='Examples of Tetrahedrons',
-     width=600, height=200,
-     center=vector(5,0,0), background=color.cyan)
-
-scene2.userspin = True
 
 wallR = box(pos= vector(display['width']/2,0,0), size=vector(0.2,200,200), color=color.green)
 wallL = box(pos=vector(-display['width']/2,0,0), size= vector(0.2,200,200), color=color.green)
