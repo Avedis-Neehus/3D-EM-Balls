@@ -5,7 +5,7 @@ import numpy as np
 import scipy 
  
 
-c = 3*10**6
+c = 3*10**8
 epsilon = 8.854187817 * 10**(-12)
 mu = 4*np.pi *10**(-7)
 
