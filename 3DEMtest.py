@@ -2,8 +2,7 @@
 from vpython import *
 import random as r
 import numpy as np
-import scipy 
- 
+from numba import jit
 
 c = 3*10**8
 epsilon = 8.854187817 * 10**(-12)
@@ -40,13 +39,6 @@ white = (255,255,255)
 
 
 
-def normalized(a):
-    b = np.linalg.norm(a)
-    if not(b == 0):
-        return a/b
-    else:
-        return np.zeros((1,3), dtype = float)
-
 
 
 def matrix_on_vector(matrix, vector):
@@ -81,15 +73,20 @@ def Force_on_bally(field, charge):
     force = charge.ladung*(field[0] + np.cross(charge.velocity, field[1]))
     return force*10
 
-def E_squared(x,y):
-    return np.dot(tot_EM_field_at_charge(x,y)[0],tot_EM_field_at_charge(x,y)[0])
 
-def electric_field_energy():
+
+
+class gui(object):
     
-    return scipy.integrate.dblquad(E_squared,0,display['width'], lambda y: 0, lambda y: display['height'])
-
-
-
+    def __init__(self):
+        add_charge = button( bind = self.add_charge, text = 'add charge')
+        
+        extra_field = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
+    
+    def add_charge(self):
+        ballys.append(Ball(1,10,-0.0001,V = np.array([0,0,0], dtype = float), X = np.array([0, 0, 0],
+                                                     dtype = float)))
+        
 
 
 class pointer(object):
@@ -163,16 +160,17 @@ class pointer(object):
 
 
 class Ball(object):
-    def __init__(self, m,q, V = np.array([0,0,0], dtype = float), X = np.array([0,0,0],dtype = float), col = vector(255,0,0)):
+    def __init__(self, m, radius,q, V = np.array([0,0,0], dtype = float), X = np.array([0,0,0],dtype = float), c = vector(255,0,0)):
         self.position = X
         self.position_2 = X
         self.velocity = V
         self.velocity_2 = V
         self.acceleration = np.array([0.,0.,0.], dtype = float)
         self.mass = m
+        self.radius = radius
         self.ladung = q
-        self.color = col
-        self.manifest= sphere(pos = vector(self.position[0],self.position[1],self.position[2] ), radius = 10, color = self.color)
+        self.color = c
+        self.manifest= sphere(pos = vector(self.position[0],self.position[1],self.position[2] ),radius = self.radius, color = self.color)
 
     def acceleration_compute(self,force):
         a = force/self.mass
@@ -188,9 +186,8 @@ class Ball(object):
         self.acceleration *= 0
         self.manifest.pos = vector(self.position[0],self.position[1],self.position[2])
     
-    def show(self):
-        pygame.draw.circle(gameDisplay, self.color, [int(self.position[0]), int(self.position[1])], self.mass)
 
+    @jit
     def Edgelord(self):
 
         if ((self.position[0] + dt*self.velocity[0] >= display['width']/2-self.mass) and dt*self.velocity[0] > 0):
@@ -224,7 +221,7 @@ class Ball(object):
 
             self.velocity[2] *= -1
             self.position[2] = self.mass + dt*self.velocity[2] -display['length']/2
-            
+    @jit        
     def EM_field(self, R):
        #using solutions to lienard wiechert potential
         
@@ -235,11 +232,11 @@ class Ball(object):
             unitradius = np.zeros(3)
 
         if np.linalg.norm(radius) != 0 and np.dot(unitradius, self.velocity)!=1:
-            charge      = self.ladung / ((1 - (np.dot(unitradius, self.velocity)/c)) ** 3)
+            charge      = self.ladung / ( (1 - np.dot(unitradius, self.velocity)/c)** 3)
             
 
             if radius < self.radius:
-                radius = self.ladung
+                radius = self.radius
 
             radius2     = radius ** 2
 
@@ -265,8 +262,8 @@ ballys = []
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
     #ballys.insert(i, Ball(5,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
-    ballys.insert(i, Ball(20,0.0001,V = np.array([0,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
-    ballys.insert(i, Ball(20,0.0001,V = np.array([0,0,0], dtype = float), X = np.array([25, 0, 0], dtype = float)))
+    ballys.insert(i, Ball(1,10,0.0001,V = np.array([0,0,3], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
+    ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
     
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
     
@@ -292,7 +289,7 @@ if show_field == True:
             
             
             
-            
+blah = userstuff()            
 
 grav = np.array([0.,0.1,0.])
 repulsion = np.array([0.,0.,0.])
