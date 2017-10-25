@@ -28,6 +28,7 @@ Magnet      = False
 rotation_matrix = np.array([[0,0,1],
                             [0,1,0],
                             [1,0,0]], dtype = int)
+planelement = 1/sqrt(2)
 
 Ball_num = 1
 c = 100
@@ -61,17 +62,14 @@ def tot_EM_field_at_charge(location):
 
         EM = EM + q.EM_field(location)
 
-    if InfinitePlate == True:
-        EM[0][0] = EM[0][0]+ 0.01
-    if Magnet == True:
-        EM[1][2] = EM[1][2]+ 0.1
 
-    return EM
+    return EM + gwee.extra_field
+
 
 def Force_on_bally(field, charge):
     
     force = charge.ladung*(field[0] + np.cross(charge.velocity, field[1]))
-    return force*10
+    return force
 
 
 
@@ -79,13 +77,74 @@ def Force_on_bally(field, charge):
 class gui(object):
     
     def __init__(self):
-        add_charge = button( bind = self.add_charge, text = 'add charge')
+        self.charge_button = button( bind = self.add_charge, text = 'add charge')
+        self.cnum_display  = text( text = ''.join(str(len(ballys)) + 'charges'))
         
-        extra_field = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
-    
+        self.EM_button         = button(bind = self.add_field, text = 'add E field')
+        self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
+        self.directions = ['x','y','z','-x','-y','-z','xy','xz','yz','-xy','-xz','-yz']
+        
+        
+    def field_init(self):
+        self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
+        
     def add_charge(self):
+        
         ballys.append(Ball(1,10,-0.0001,V = np.array([0,0,0], dtype = float), X = np.array([0, 0, 0],
                                                      dtype = float)))
+    def add_field(self):
+        
+        try:
+            self.E_dic = slider(pos= scene.caption_anchor, min = 0, max = 12, step = 1, value = 0, bind = self.give_field)
+            self.E_dic_tex = text(text = ''.join(self.directions[self.E_dic.value]) )
+            
+            self.B_dic = slider(min = 0, max = 8, step = 1, value = 0, bind = self.give_field)
+            self.B_dic_tex = text(text = ''.join(self.directions[self.B_dic.value]) )
+            
+            self.E_mag = slider(min = 0.01, max = 1, step = 0.01, value = 0.01, bind = self.give_field)
+            self.E_mag_tex = text( text = ''.join(self.E_mag.value))
+            
+            self.B_mag = slider(min = 0.01, max = 1, step = 0.01, value = 0.01, bind = self.give_field)
+            self.B_mag_tex = text( text = ''.join(self.B_mag.value))
+        except:
+            raise('something happened')
+        
+    @staticmethod
+    def evaluate(dic, f, f_mag):
+               
+        if dic < 3:
+            self.extra_field[f][dic] = 1
+            
+        elif dic <6:
+            self.extra_field[f][dic-4] = -1
+                            
+        elif dic<9:
+            self.extra_field[f][dic-4] = planelement
+            self.extra_field[f][dic-3] = planelement
+                            
+        else:
+            self.extra_field[f][dic-4] = -planelement
+            self.extra_field[f][dic-3] = -planelement
+                            
+        self.extra_field[f] *= f_mag       
+                
+    def give_field(self):
+        
+        self.field_init()
+                        
+        self.E_dic_tex = text(text = ''.join(self.directions[self.E_dic.value]) )
+        self.B_dic_tex = text(text = ''.join(self.directions[self.B_dic.value]) )
+        self.E_mag_tex = text( text = ''.join(self.E_mag.value))
+        self.B_mag_tex = text( text = ''.join(self.B_mag.value))
+        
+        self.evaluate(self.E_dic.value, 0, self.E_mag.value)
+        self.evaluate(self.B_dic.value, 1, self.B_mag.value)
+
+        
+        
+        
+        
+        
         
 
 
@@ -258,6 +317,7 @@ class Ball(object):
         return EM_field
 
 
+
 ballys = [] 
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
@@ -266,6 +326,7 @@ for i in range(Ball_num):
     ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
     
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
+gwee = gui()
     
 if show_field == True:    
  #create pointer objects                  
@@ -288,8 +349,6 @@ if show_field == True:
                     pointers.append(pointer(10, pointer_grid_x[i], pointer_grid_y[j], pointer_grid_y[k]))
             
             
-            
-blah = userstuff()            
 
 grav = np.array([0.,0.1,0.])
 repulsion = np.array([0.,0.,0.])
