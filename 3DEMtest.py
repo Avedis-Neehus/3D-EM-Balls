@@ -80,10 +80,12 @@ class gui(object):
         self.charge_button = button(pos = scene.title_anchor, bind = self.add_charge, text = 'add charge')
         self.cnum_display  = text( text = ''.join(str(len(ballys)) + 'charges'))
         
+        self.field_button = button(bind =self.add_field, text = 'add field ')
+        scene.append_to_caption('\n\n')
         
         self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
         self.directions = ['x','y','z','-x','-y','-z','xy','xz','yz','-xy','-xz','-yz']
-        self.add_field()
+        
         
     def field_init(self):
         self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
@@ -234,7 +236,9 @@ class pointer(object):
 
 
 class Ball(object):
+    
     def __init__(self, m, radius,q, V = np.array([0,0,0], dtype = float), X = np.array([0,0,0],dtype = float), c = vector(255,0,0)):
+        
         self.position = X
         self.position_2 = X
         self.velocity = V
@@ -249,7 +253,8 @@ class Ball(object):
     def acceleration_compute(self,force):
         a = force/self.mass
         self.acceleration += a
-
+    def sliders(self):
+        self.x_pos = slider
     def move(self):
         self.velocity += self.acceleration*dt
        
