@@ -77,7 +77,7 @@ def Force_on_bally(field, charge):
 class gui(object):
     
     def __init__(self):
-        self.charge_button = button( bind = self.add_charge, text = 'add charge')
+        self.charge_button = button(pos = scene.title_anchor, bind = self.add_charge, text = 'add charge')
         self.cnum_display  = text( text = ''.join(str(len(ballys)) + 'charges'))
         
         
@@ -94,23 +94,28 @@ class gui(object):
                                                      dtype = float)))
     def add_field(self):
               
-        self.E_dic = slider(min = 0, max = 11, step = 1, value = 0, vertical = 1,top = 10, bind = self.give_field)
-        self.E_dic_tex = text(text = ''.join(self.directions[self.E_dic.value]) )
+        self.E_dic = slider(min = 0, max = 11, step = 1, value = 0,top = 10, bind = self.give_field)
+        self.E_dic_tex = wtext(text = ''.join( 'E: ' + self.directions[self.E_dic.value]) )
+        scene.append_to_caption('\n\n')
         
-        self.B_dic = slider(min = 0, max = 11, step = 1, value = 0,vertical = 1,top = 10, bind = self.give_field)
-        self.B_dic_tex = text(text = ''.join(self.directions[self.B_dic.value]) )
+        self.B_dic = slider(min = 0, max = 11, step = 1, value = 0,top = 10, bind = self.give_field)
+        self.B_dic_tex = wtext(text = ''.join('B: ' + self.directions[self.B_dic.value]) )
+        scene.append_to_caption('\n\n')
         
-        self.E_mag = slider(min = 0, max = 1000, step = 10, value = 0,vertical = 1, top = 10, bind = self.give_field)
-        self.E_mag_tex = text( text = ''.join(str(self.E_mag.value)))
+        self.E_mag = slider(min = 0, max = 1000, step = 10, value = 0, top = 10, bind = self.give_field)
+        self.E_mag_tex = wtext( text = ''.join('E_mag:' + str(self.E_mag.value)  ))
+        scene.append_to_caption('\n\n')
         
-        self.B_mag = slider(min = 0, max = 1000, step = 10, value = 0,vertical = 1, top = 10,bind = self.give_field)
-        self.B_mag_tex = text( text = ''.join(str(self.B_mag.value)))
+        self.B_mag = slider(min = 0, max = 1000, step = 10, value = 0, top = 10,bind = self.give_field)
+        self.B_mag_tex = wtext( text = ''.join('B_mag: ' + str(self.B_mag.value)))
+        scene.append_to_caption('\n\n')
         
     def update_text(self):
-        self.E_dic_tex.text = ''.join(self.directions[self.E_dic.value]) 
-        self.B_dic_tex.text = ''.join(self.directions[self.B_dic.value]) 
-        self.E_mag_tex.text = ''.join(str(self.E_mag.value))
-        self.B_mag_tex.text= ''.join(str(self.B_mag.value))
+        
+        self.E_dic_tex.text = ''.join( 'E: ' + self.directions[self.E_dic.value] ) 
+        self.B_dic_tex.text = ''.join('B: ' + self.directions[self.B_dic.value] ) 
+        self.E_mag_tex.text = ''.join('E_mag:' + str(self.E_mag.value) )
+        self.B_mag_tex.text= ''.join('B_mag: ' + str(self.B_mag.value) )
     
     def evaluate(self,dic, f, f_mag):
                
@@ -145,7 +150,7 @@ class gui(object):
     def give_field(self):
         
         self.field_init()
-                        
+        self.update_text()                
        
         self.evaluate(self.E_dic.value, 0, self.E_mag.value)
         self.evaluate(self.B_dic.value, 1, self.B_mag.value)
