@@ -80,10 +80,10 @@ class gui(object):
         self.charge_button = button( bind = self.add_charge, text = 'add charge')
         self.cnum_display  = text( text = ''.join(str(len(ballys)) + 'charges'))
         
-        self.EM_button         = button(bind = self.add_field, text = 'add E field')
+        
         self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
         self.directions = ['x','y','z','-x','-y','-z','xy','xz','yz','-xy','-xz','-yz']
-        
+        self.add_field()
         
     def field_init(self):
         self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
@@ -93,50 +93,60 @@ class gui(object):
         ballys.append(Ball(1,10,-0.0001,V = np.array([0,0,0], dtype = float), X = np.array([0, 0, 0],
                                                      dtype = float)))
     def add_field(self):
+              
+        self.E_dic = slider(min = 0, max = 11, step = 1, value = 0, vertical = 1,top = 10, bind = self.give_field)
+        self.E_dic_tex = text(text = ''.join(self.directions[self.E_dic.value]) )
         
-        try:
-            self.E_dic = slider(pos= scene.caption_anchor, min = 0, max = 12, step = 1, value = 0, bind = self.give_field)
-            self.E_dic_tex = text(text = ''.join(self.directions[self.E_dic.value]) )
-            
-            self.B_dic = slider(min = 0, max = 8, step = 1, value = 0, bind = self.give_field)
-            self.B_dic_tex = text(text = ''.join(self.directions[self.B_dic.value]) )
-            
-            self.E_mag = slider(min = 0.01, max = 1, step = 0.01, value = 0.01, bind = self.give_field)
-            self.E_mag_tex = text( text = ''.join(self.E_mag.value))
-            
-            self.B_mag = slider(min = 0.01, max = 1, step = 0.01, value = 0.01, bind = self.give_field)
-            self.B_mag_tex = text( text = ''.join(self.B_mag.value))
-        except:
-            raise('something happened')
+        self.B_dic = slider(min = 0, max = 11, step = 1, value = 0,vertical = 1,top = 10, bind = self.give_field)
+        self.B_dic_tex = text(text = ''.join(self.directions[self.B_dic.value]) )
         
-    @staticmethod
-    def evaluate(dic, f, f_mag):
+        self.E_mag = slider(min = 0, max = 1000, step = 10, value = 0,vertical = 1, top = 10, bind = self.give_field)
+        self.E_mag_tex = text( text = ''.join(str(self.E_mag.value)))
+        
+        self.B_mag = slider(min = 0, max = 1000, step = 10, value = 0,vertical = 1, top = 10,bind = self.give_field)
+        self.B_mag_tex = text( text = ''.join(str(self.B_mag.value)))
+        
+    def update_text(self):
+        self.E_dic_tex.text = ''.join(self.directions[self.E_dic.value]) 
+        self.B_dic_tex.text = ''.join(self.directions[self.B_dic.value]) 
+        self.E_mag_tex.text = ''.join(str(self.E_mag.value))
+        self.B_mag_tex.text= ''.join(str(self.B_mag.value))
+    
+    def evaluate(self,dic, f, f_mag):
                
-        if dic < 3:
+        if dic <= 2:
             self.extra_field[f][dic] = 1
             
-        elif dic <6:
-            self.extra_field[f][dic-4] = -1
+        elif dic <= 5:
+            self.extra_field[f][dic-3] = -1
                             
-        elif dic<9:
-            self.extra_field[f][dic-4] = planelement
-            self.extra_field[f][dic-3] = planelement
-                            
+        def in_ebene(start):  
+                  
+            if dic == start:            
+                self.extra_field[f][0] = planelement
+                self.extra_field[f][1] = planelement
+                                
+            elif dic == start +1:
+                self.extra_field[f][0] = planelement
+                self.extra_field[f][2] = planelement
+                       
+            elif dic == start +2:
+                self.extra_field[f][1] = planelement
+                self.extra_field[f][2] = planelement
+        in_ebene(6)  
+        in_ebene(9)  
+        
+        if dic <9:        
+            self.extra_field[f] *= f_mag 
+                        
         else:
-            self.extra_field[f][dic-4] = -planelement
-            self.extra_field[f][dic-3] = -planelement
-                            
-        self.extra_field[f] *= f_mag       
+            self.extra_field[f] *= -f_mag        
                 
     def give_field(self):
         
         self.field_init()
                         
-        self.E_dic_tex = text(text = ''.join(self.directions[self.E_dic.value]) )
-        self.B_dic_tex = text(text = ''.join(self.directions[self.B_dic.value]) )
-        self.E_mag_tex = text( text = ''.join(self.E_mag.value))
-        self.B_mag_tex = text( text = ''.join(self.B_mag.value))
-        
+       
         self.evaluate(self.E_dic.value, 0, self.E_mag.value)
         self.evaluate(self.B_dic.value, 1, self.B_mag.value)
 
@@ -322,8 +332,8 @@ ballys = []
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
     #ballys.insert(i, Ball(5,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
-    ballys.insert(i, Ball(1,10,0.0001,V = np.array([0,0,3], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
-    ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
+    ballys.insert(i, Ball(1,10,0.0001,V = np.array([0,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
+    #ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
     
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
 gwee = gui()
@@ -359,7 +369,7 @@ while not crashed :
 
     rate(30)
    
-
+    
     
     if electrodynamics == True:
         for bally in ballys:
