@@ -69,7 +69,7 @@ def tot_EM_field_at_charge(location):
 def Force_on_bally(field, charge):
     
     force = charge.ladung*(field[0] + np.cross(charge.velocity, field[1]))
-    return force
+    return force*10
 
 
 
@@ -256,17 +256,21 @@ class Ball(object):
     def sliders(self):
         self.x_pos = slider
     def move(self):
-        self.velocity += self.acceleration*dt
-       
-        #if self.velocity.any() >= c/3:
-         #   self.velocity -= self.acceleration*dt  
-
+        
+        
+        self.velocity += self.acceleration*dt  
         self.position += self.velocity*dt
+        a = Force_on_bally(tot_EM_field_at_charge(self.position), self)/self.mass                          
+        self.position -= self.velocity*dt
+        self.velocity += (a-self.acceleration)*dt/2  
+        self.position += self.velocity*dt
+        
+
         self.acceleration *= 0
         self.manifest.pos = vector(self.position[0],self.position[1],self.position[2])
     
 
-    @jit
+    @jit(cache= True)
     def Edgelord(self):
 
         if ((self.position[0] + dt*self.velocity[0] >= display['width']/2-self.mass) and dt*self.velocity[0] > 0):
@@ -300,7 +304,8 @@ class Ball(object):
 
             self.velocity[2] *= -1
             self.position[2] = self.mass + dt*self.velocity[2] -display['length']/2
-    @jit        
+                         
+    @jit(cache = True)        
     def EM_field(self, R):
        #using solutions to lienard wiechert potential
         
@@ -342,7 +347,7 @@ ballys = []
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
     #ballys.insert(i, Ball(5,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
-    ballys.insert(i, Ball(1,10,0.0001,V = np.array([0,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
+    ballys.insert(i, Ball(1,10,0.0001,V = np.array([10,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
     #ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
     
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
@@ -368,56 +373,56 @@ if show_field == True:
                 for k in range(dim_z):
                     pointers.append(pointer(10, pointer_grid_x[i], pointer_grid_y[j], pointer_grid_y[k]))
             
-            
+    pointers = np.array(pointers)        
 
 grav = np.array([0.,0.1,0.])
 repulsion = np.array([0.,0.,0.])
 angularVector = np.array([0.,0.,2])
 crashed = False
 index = 0
+
+@np.vectorize
+def arrow_update(zeiger):
+    
+        zeiger.field_update(ballys)
+        zeiger.scaled_color()
+        zeiger.position_end() 
+        
+@jit(cache = True)        
+def stoss(i):
+    
+        for bally2 in ballys[i+1:]:           
+        #checks collisions
+            if  np.linalg.norm(bally.position - bally2.position) <= bally.radius  + bally2.radius  :
+    
+                bally.velocity_2 = (bally.mass * bally.velocity + bally2.mass * bally2.velocity + bally2.mass *(bally2.velocity - bally.velocity))/ (bally.mass + bally2.mass)
+                bally2.velocity_2 = (bally.mass * bally2.velocity + bally.mass * bally.velocity + bally.mass *(bally.velocity - bally2.velocity))/ (bally2.mass + bally.mass)
+    
+                #prevents balls getting stuck in each other and assignes new velocitys
+                if not(np.linalg.norm(bally.position + bally.velocity_2  - (bally2.position + bally2.velocity_2) ) <= bally.mass  + bally2.mass):
+                        bally.velocity = bally.velocity_2
+                        bally2.velocity = bally2.velocity_2
+        
 while not crashed :
 
     rate(30)
    
     
-    
-    if electrodynamics == True:
-        for bally in ballys:
-            bally.acceleration_compute(Force_on_bally(tot_EM_field_at_charge(bally.position), bally))
             #bally.acceleration = np.cross(angularVector, bally.velocity) 
             #bally.velocity[0] = -25*np.sin(1/30 * index) 
             
     if show_field == True :       
-        for i, zeiger in enumerate(pointers):
-            #zeiger.relative_position(ballys) < 100:
-            zeiger.field_update(ballys)
-            zeiger.scaled_color()
-            zeiger.position_end()
-            #zeiger.show()
+        arrow_update(pointers)
+            
     
     for i, bally in enumerate(ballys):
-
-        
-        
-
-       
+      
         #ballys[i].acceleration_compute(grav * ballys[i].mass)
-        
-        for bally2 in ballys[i+1:]:
-                
-            #checks collisions
-            if  np.linalg.norm(bally.position - bally2.position) <= bally.radius  + bally2.radius  :
-
-                bally.velocity_2 = (bally.mass * bally.velocity + bally2.mass * bally2.velocity + bally2.mass *(bally2.velocity - bally.velocity))/ (bally.mass + bally2.mass)
-                bally2.velocity_2 = (bally.mass * bally2.velocity + bally.mass * bally.velocity + bally.mass *(bally.velocity - bally2.velocity))/ (bally2.mass + bally.mass)
-
-                #prevents balls getting stuck in each other and assignes new velocitys
-                if not(np.linalg.norm(bally.position + bally.velocity_2  - (bally2.position + bally2.velocity_2) ) <= bally.mass  + bally2.mass):
-                        bally.velocity = bally.velocity_2
-                        bally2.velocity = bally2.velocity_2
-
-        bally.Edgelord()
-        
+        if electrodynamics == True:
+            bally.acceleration_compute(Force_on_bally(tot_EM_field_at_charge(bally.position), bally))
+            
+        stoss(i)
+        bally.Edgelord()       
         bally.move()
         index+=1
         
