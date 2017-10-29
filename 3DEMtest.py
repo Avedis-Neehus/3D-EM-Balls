@@ -1,10 +1,7 @@
-#A Primer on Scientific Programming with Python,Python Scripting for Computational Science
 from vpython import *
 import random as r
 import numpy as np
-from numba import jit,float32
-import cProfile
-
+from numba import jit
 
 c = 3*10**8
 epsilon = 8.854187817 * 10**(-12)
@@ -32,7 +29,7 @@ rotation_matrix = np.array([[0,0,1],
                             [1,0,0]], dtype = int)
 planelement = 1/sqrt(2)
 
-Ball_num = 4
+Ball_num = 1
 c = 100
 dt= 1/30
 step = 40
@@ -55,7 +52,7 @@ def matrix_on_vector(matrix, vector):
     
     
     
-@jit( cache= True)  
+    
 def tot_EM_field_at_charge(location):
 
     EM = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
@@ -184,8 +181,7 @@ class pointer(object):
             pos += np.dot(q.position - self.position,q.position -self.position)
        
         return (pos)**0.5
-    
-    @jit
+
     def field_update(self, charges):
         
         self.field = tot_EM_field_at_charge(self.position)
@@ -235,41 +231,8 @@ class pointer(object):
 
 
 
-@jit( float32[:,:](float32[:],float32,float32,float32[:],float32[:],float32[:]), debug = True)
-def jit_EM_field(position,length,ladung,velocity,acceleration,R):
-    #using solutions to lienard wiechert potential
-    
-    radius = np.linalg.norm(R - position)
-    if radius != 0:
-        unitradius = (R - position)/radius
-    else:
-        unitradius = np.zeros(3)
-
-    if np.linalg.norm(radius) != 0 and np.dot(unitradius, velocity)!=1:
-        charge      = ladung / ( (1 - np.dot(unitradius, velocity)/c)** 3)
 
 
-        if radius < length:
-            radius = length
-
-        radius2     = radius ** 2
-
-        velocity_in_c = velocity/c
-
-        oneMinusV2  = 1 - np.dot(velocity_in_c, velocity_in_c)
-        uMinusV     = unitradius - velocity_in_c            
-        aCrossUmV   = np.cross(uMinusV, acceleration)
-        Eleft       = (oneMinusV2 * (unitradius - velocity_in_c)) / radius2
-        Eright      = np.cross(unitradius, aCrossUmV) / (radius*c**2)
-        E           = (charge/(4*np.pi*epsilon)) * (Eleft - Eright)
-
-        B           = np.cross(unitradius/c, ((mu*epsilon*charge*c**2) * (Eleft - Eright)))
-
-        EM_field = np.array([E,B], dtype = float)
-    else:
-        EM_field = np.zeros((2,3), dtype = float)
-
-    return EM_field
 
 class Ball(object):
     
@@ -312,7 +275,7 @@ class Ball(object):
         self.manifest.pos = vector(self.position[0],self.position[1],self.position[2])
         
         
-    
+    @jit(cache= True)
     def Edgelord(self):
 
         if ((self.position[0] + dt*self.velocity[0] >= display['width']/2-self.mass) and dt*self.velocity[0] > 0):
@@ -349,9 +312,39 @@ class Ball(object):
                          
     @jit(cache = True)        
     def EM_field(self, R):
-        #using solutions to lienard wiechert potential
-        jit_EM_field(self.position,self.radius,self.ladung,self.velocity,self.acceleration,R)
+       #using solutions to lienard wiechert potential
         
+        radius = np.linalg.norm(R - self.position)
+        if radius != 0:
+            unitradius = (R - self.position)/radius
+        else:
+            unitradius = np.zeros(3)
+
+        if np.linalg.norm(radius) != 0 and np.dot(unitradius, self.velocity)!=1:
+            charge      = self.ladung / ( (1 - np.dot(unitradius, self.velocity)/c)** 3)
+            
+
+            if radius < self.radius:
+                radius = self.radius
+
+            radius2     = radius ** 2
+
+            velocity_in_c = self.velocity/c
+            
+            oneMinusV2  = 1 - np.dot(velocity_in_c, velocity_in_c)
+            uMinusV     = unitradius - velocity_in_c            
+            aCrossUmV   = np.cross(uMinusV, self.acceleration)
+            Eleft       = (oneMinusV2 * (unitradius - velocity_in_c)) / radius2
+            Eright      = np.cross(unitradius, aCrossUmV) / (radius*c**2)
+            E           = (charge/(4*np.pi*epsilon)) * (Eleft - Eright)
+           
+            B           = np.cross(unitradius/c, ((mu*epsilon*charge*c**2) * (Eleft - Eright)))
+            
+            EM_field = np.array([E,B], dtype = float)
+        else:
+            EM_field = np.zeros((2,3), dtype = float)
+
+        return EM_field
 
     @staticmethod
     def trial_integrate():
@@ -369,8 +362,8 @@ class Ball(object):
 ballys = [] 
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
-    ballys.insert(i, Ball(1,10,0.0001,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
-    #ballys.insert(i, Ball(1,10,0.0001,V = np.array([10,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
+    #ballys.insert(i, Ball(5,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
+    ballys.insert(i, Ball(1,10,0.0001,V = np.array([10,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
     #ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
     
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
@@ -403,15 +396,14 @@ angularVector = np.array([0.,0.,2])
 crashed = False
 index = 0
 
-
 @np.vectorize
 def arrow_update(zeiger):
     
         zeiger.field_update(ballys)
-        #zeiger.scaled_color()
+        zeiger.scaled_color()
         zeiger.position_end() 
         
-        
+@jit(cache = True)        
 def stoss(i,bally):
     
         for bally2 in ballys[i+1:]:           
@@ -427,17 +419,11 @@ def stoss(i,bally):
                         bally2.velocity = bally2.velocity_2
                         
 
-
-       
-while not crashed:
+            
+while not crashed :
 
     rate(30) 
-    
+            
     if show_field == True :       
         arrow_update(pointers)
-    Ball.trial_integrate()       
-       
- 
-
-
-
+    Ball.trial_integrate()         
