@@ -431,11 +431,11 @@ def stoss(i,bally):
        
 while not crashed:
 
-rate(30) 
-
-if show_field == True :       
-arrow_update(pointers)
-Ball.trial_integrate()         
+    rate(30) 
+    
+    if show_field == True :       
+        arrow_update(pointers)
+    Ball.trial_integrate()       
        
  
 
