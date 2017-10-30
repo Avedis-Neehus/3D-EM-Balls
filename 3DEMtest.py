@@ -441,12 +441,12 @@ def stoss(i,bally):
                         bally2.velocity = bally2.velocity_2
                         
              
-    while not crashed :
-        
-        rate(60) 
-                
-        if show_field == True :       
-            arrow_update(pointers)
-        Ball.trial_integrate()         
+while not crashed :
+
+    rate(60) 
+
+    if show_field == True :       
+        arrow_update(pointers)
+    Ball.trial_integrate()         
         
         
