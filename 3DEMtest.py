@@ -2,6 +2,8 @@ from vpython import *
 import random as r
 import numpy as np
 from numba import jit
+from math import sqrt   
+    
 
 c = 3*10**8
 epsilon = 8.854187817 * 10**(-12)
@@ -29,9 +31,9 @@ rotation_matrix = np.array([[0,0,1],
                             [1,0,0]], dtype = int)
 planelement = 1/sqrt(2)
 
-Ball_num = 1
+Ball_num = 4
 c = 100
-dt= 1/30
+dt= 1/60
 step = 40
 red = (255,0,0)
 white = (255,255,255)
@@ -40,16 +42,35 @@ white = (255,255,255)
 
 
 
-
+@jit(cache = True, nopython=True)
 def matrix_on_vector(matrix, vector):
     
-    new_vector = vector[0] * matrix[:,0] + vector[1] * matrix[:,1] + vector[2] * matrix[:,2]
-    return new_vector
+    return vector[0] * matrix[:,0] + vector[1] * matrix[:,1] + vector[2] * matrix[:,2]
+     
+@jit(cache = True, nopython=True)
+def dot(vec1, vec2):
+    
+    return vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2]    
     
     
     
+@jit(cache = True, nopython=True)
+def cross(vec1, vec2):
     
+    result = np.array([0.,0.,0.])
     
+    a1, a2, a3 = vec1[0],vec1[1], vec1[2]
+    b1, b2, b3 = vec2[0], vec2[1], vec2[2]
+    
+    result[0] = a2 * b3 - a3 * b2
+    result[1] = a3 * b1 - a1 * b3
+    result[2] = a1 * b2 - a2 * b1  
+          
+    return result
+
+@jit(cache = True, nopython=True)
+def norm(vec):
+    return sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2])   
     
     
     
@@ -275,7 +296,7 @@ class Ball(object):
         self.manifest.pos = vector(self.position[0],self.position[1],self.position[2])
         
         
-    @jit(cache= True)
+
     def Edgelord(self):
 
         if ((self.position[0] + dt*self.velocity[0] >= display['width']/2-self.mass) and dt*self.velocity[0] > 0):
@@ -310,17 +331,18 @@ class Ball(object):
             self.velocity[2] *= -1
             self.position[2] = self.mass + dt*self.velocity[2] -display['length']/2
                          
-    @jit(cache = True)        
+         
     def EM_field(self, R):
        #using solutions to lienard wiechert potential
         
-        radius = np.linalg.norm(R - self.position)
+        radius = norm(R - self.position)
+        
         if radius != 0:
             unitradius = (R - self.position)/radius
         else:
             unitradius = np.zeros(3)
 
-        if np.linalg.norm(radius) != 0 and np.dot(unitradius, self.velocity)!=1:
+        if radius != 0 and dot(unitradius, self.velocity)!=1:
             charge      = self.ladung / ( (1 - np.dot(unitradius, self.velocity)/c)** 3)
             
 
@@ -331,14 +353,14 @@ class Ball(object):
 
             velocity_in_c = self.velocity/c
             
-            oneMinusV2  = 1 - np.dot(velocity_in_c, velocity_in_c)
+            oneMinusV2  = 1 - dot(velocity_in_c, velocity_in_c)
             uMinusV     = unitradius - velocity_in_c            
-            aCrossUmV   = np.cross(uMinusV, self.acceleration)
+            aCrossUmV   = cross(uMinusV, self.acceleration)
             Eleft       = (oneMinusV2 * (unitradius - velocity_in_c)) / radius2
-            Eright      = np.cross(unitradius, aCrossUmV) / (radius*c**2)
+            Eright      = cross(unitradius, aCrossUmV) / (radius*c**2)
             E           = (charge/(4*np.pi*epsilon)) * (Eleft - Eright)
            
-            B           = np.cross(unitradius/c, ((mu*epsilon*charge*c**2) * (Eleft - Eright)))
+            B           = cross(unitradius/c, ((mu*epsilon*charge*c**2) * (Eleft - Eright)))
             
             EM_field = np.array([E,B], dtype = float)
         else:
@@ -360,12 +382,12 @@ class Ball(object):
             bally.Edgelord()
             
 ballys = [] 
+
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
-    #ballys.insert(i, Ball(5,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
-    ballys.insert(i, Ball(1,10,0.0001,V = np.array([10,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
+    ballys.insert(i, Ball(1,10,0.0001,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
+    #ballys.insert(i, Ball(1,10,0.0001,V = np.array([10,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
     #ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
-    
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
 gwee = gui()
     
@@ -403,7 +425,7 @@ def arrow_update(zeiger):
         zeiger.scaled_color()
         zeiger.position_end() 
         
-@jit(cache = True)        
+      
 def stoss(i,bally):
     
         for bally2 in ballys[i+1:]:           
@@ -418,12 +440,13 @@ def stoss(i,bally):
                         bally.velocity = bally.velocity_2
                         bally2.velocity = bally2.velocity_2
                         
-
-            
-while not crashed :
-
-    rate(30) 
-            
-    if show_field == True :       
-        arrow_update(pointers)
-    Ball.trial_integrate()         
+             
+    while not crashed :
+        
+        rate(60) 
+                
+        if show_field == True :       
+            arrow_update(pointers)
+        Ball.trial_integrate()         
+        
+        
