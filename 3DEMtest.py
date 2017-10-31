@@ -2,7 +2,8 @@ from vpython import *
 import random as r
 import numpy as np
 from numba import jit
-from math import sqrt   
+from math import sqrt
+from ast import literal_eval  
     
 
 c = 3*10**8
@@ -89,7 +90,7 @@ def tot_EM_field_at_charge(location):
 def Force_on_bally(field, charge):
     
     force = charge.ladung*(field[0] + np.cross(charge.velocity, field[1]))
-    return force*10
+    return force
 
 
 
@@ -97,23 +98,51 @@ def Force_on_bally(field, charge):
 class gui(object):
     
     def __init__(self):
+        
         self.charge_button = button(pos = scene.title_anchor, bind = self.add_charge, text = 'add charge')
-        self.cnum_display  = text( text = ''.join(str(len(ballys)) + 'charges'))
+        self.cnum_display  = wtext( text = ''.join(str(len(ballys)) + ' charges'))
+        self.text_field = wtext(pos = scene.title_anchor, text = 'm = 1; radius = 10; q = 0.0001 ; V = [10,0,0]; X = [-25, 0, 0]' )
+        scene.bind('keydown', self.keyInput)
         
         self.field_button = button(bind =self.add_field, text = 'add field ')
-        scene.append_to_caption('\n\n')
-        
+        scene.append_to_caption('\n\n')        
         self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
         self.directions = ['x','y','z','-x','-y','-z','xy','xz','yz','-xy','-xz','-yz']
         
+    def keyInput(self,evt):
+        s = evt.key
+        
+        if len(s) == 1:
+            self.text_field.text += s
+            
+        elif s == 'backspace':
+            
+           try:
+               del self.text_field.text [-1]
+           except:#index out of bounds                        
+               pass
+           
+    @property
+    def call_values(self):
+        return self.text_field.text
+    
+    @call_values.setter 
+    def call_values(self, string):
+        
+        self.text_field.text = string
         
     def field_init(self):
         self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
         
     def add_charge(self):
         
-        ballys.append(Ball(1,10,-0.0001,V = np.array([0,0,0], dtype = float), X = np.array([0, 0, 0],
-                                                     dtype = float)))
+        #try:
+        ballys.append(Ball.from_string(self.call_values))
+        #eval('ballys.append(Ball('+ self.call_values + ' ))')
+        self.call_values = ''
+        #except:
+         #   self.call_values = 'wrong format'
+            
     def add_field(self):
               
         self.E_dic = slider(min = 0, max = 11, step = 1, value = 0,top = 10, bind = self.give_field)
@@ -196,12 +225,6 @@ class pointer(object):
         
         self.show = arrow(pos = vector(self.position[0],self.position[1],self.position[2] ), axis = vector(self.position_2[0],self.position_2[1],self.position_2[2] ))                
         
-    def relative_position(self, charges):
-        pos = 0
-        for q in charges:       
-            pos += np.dot(q.position - self.position,q.position -self.position)
-       
-        return (pos)**0.5
 
     def field_update(self, charges):
         
@@ -257,7 +280,7 @@ class pointer(object):
 
 class Ball(object):
     
-    def __init__(self, m, radius,q, V = np.array([0,0,0], dtype = float), X = np.array([0,0,0],dtype = float), c = vector(255,0,0)):
+    def __init__(self, m = 1, radius = 10, q = 0.0001, V = np.array([0,0,0], dtype = float), X = np.array([0,0,0],dtype = float), c = vector(255,0,0)):
         
         self.position = X
         self.position_2 = X
@@ -268,13 +291,28 @@ class Ball(object):
         self.radius = radius
         self.ladung = q
         self.color = c
+        
         self.manifest= sphere(pos = vector(self.position[0],self.position[1],self.position[2] ),radius = self.radius, color = self.color)
-
+    
+    @classmethod
+    def from_string(cls, string):
+        
+        args = dict(e.split(' =') for e in string.split('; '))
+        
+        for key, value in args.items():
+            
+            value = eval(value)
+            args[key] = value 
+            
+            if isinstance(value,list):
+                
+                args[key] = np.array(value, dtype = float)
+               
+        return cls(**args)
+    
     def acceleration_compute(self,force):
         a = force/self.mass
         self.acceleration += a
-    def sliders(self):
-        self.x_pos = slider
         
     def move(self):
              
@@ -385,7 +423,7 @@ ballys = []
 
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
-    ballys.insert(i, Ball(1,10,0.0001,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
+    ballys.insert(i, Ball(1,10,0.001,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
     #ballys.insert(i, Ball(1,10,0.0001,V = np.array([10,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
     #ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
@@ -442,9 +480,9 @@ def stoss(i,bally):
                         
              
 while not crashed :
-
+        
     rate(60) 
-
+            
     if show_field == True :       
         arrow_update(pointers)
     Ball.trial_integrate()         
