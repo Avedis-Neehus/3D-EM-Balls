@@ -2,7 +2,6 @@ from vpython import *
 import random as r
 import numpy as np
 from numba import jit
-from math import sqrt
 from ast import literal_eval  
     
 
@@ -136,12 +135,12 @@ class gui(object):
         
     def add_charge(self):
         
-        #try:
-        ballys.append(Ball.from_string(self.call_values))
+        try:
+            ballys.append(Ball.from_string(self.call_values))
         #eval('ballys.append(Ball('+ self.call_values + ' ))')
-        self.call_values = ''
-        #except:
-         #   self.call_values = 'wrong format'
+            self.call_values = ''
+        except:
+            self.call_values = 'wrong format'
             
     def add_field(self):
               
@@ -239,10 +238,10 @@ class pointer(object):
             self.field_direction = np.zeros(3,)
         else:    
             if show_magnetic == True: 
-                self.field_direction = self.field[1]/self.field_mag       
+                self.field_direction = -self.field[1]/self.field_mag       
                 #self.field_direction = matrix_on_vector(rotation_matrix, self.field[1]/self.field_mag)
             else:
-                self.field_direction = self.field[0]/self.field_mag
+                self.field_direction = -self.field[0]/self.field_mag
                 
     def position_end(self):
         
@@ -275,7 +274,35 @@ class pointer(object):
 
 
 
-
+@jit( nopython = True)
+def jit_EM_field(position,length,ladung,velocity,acceleration,R):
+    #using solutions to lienard wiechert potential
+    EM_field = np.array([0.,0.,0.,0.,0.,0.])
+    radius = np.linalg.norm(R - position)
+    
+    if radius != 0:        
+        unitradius = (R - position)/radius
+                     
+        if np.dot(unitradius, velocity) != 1:
+            charge = ladung / ( (1 - np.dot(unitradius, velocity)/c)** 3)
+            
+            if radius < length:
+                radius = length
+                
+            radius2 = radius ** 2
+            velocity_in_c = velocity/c
+            oneMinusV2 = 1 - np.dot(velocity_in_c, velocity_in_c)
+            uMinusV = unitradius - velocity_in_c            
+            aCrossUmV = cross(uMinusV, acceleration)
+            Eleft = (oneMinusV2 * (unitradius - velocity_in_c)) / radius2
+            Eright = cross(unitradius, aCrossUmV) / (radius*c**2)
+            
+            E = (charge/(4*np.pi*epsilon)) * (Eleft - Eright)
+            B = cross(unitradius/c, ((mu*epsilon*charge*c**2) * (Eleft - Eright)))
+            
+            EM_field = np.array([E[0],E[1],E[2],B[0],B[1],B[2]])
+            
+    return EM_field
 
 
 class Ball(object):
@@ -318,8 +345,6 @@ class Ball(object):
              
         self.velocity += self.acceleration*dt  
         self.position += self.velocity*dt 
-        
-        
         
 
         
@@ -371,40 +396,9 @@ class Ball(object):
                          
          
     def EM_field(self, R):
-       #using solutions to lienard wiechert potential
-        
-        radius = norm(R - self.position)
-        
-        if radius != 0:
-            unitradius = (R - self.position)/radius
-        else:
-            unitradius = np.zeros(3)
-
-        if radius != 0 and dot(unitradius, self.velocity)!=1:
-            charge      = self.ladung / ( (1 - np.dot(unitradius, self.velocity)/c)** 3)
-            
-
-            if radius < self.radius:
-                radius = self.radius
-
-            radius2     = radius ** 2
-
-            velocity_in_c = self.velocity/c
-            
-            oneMinusV2  = 1 - dot(velocity_in_c, velocity_in_c)
-            uMinusV     = unitradius - velocity_in_c            
-            aCrossUmV   = cross(uMinusV, self.acceleration)
-            Eleft       = (oneMinusV2 * (unitradius - velocity_in_c)) / radius2
-            Eright      = cross(unitradius, aCrossUmV) / (radius*c**2)
-            E           = (charge/(4*np.pi*epsilon)) * (Eleft - Eright)
-           
-            B           = cross(unitradius/c, ((mu*epsilon*charge*c**2) * (Eleft - Eright)))
-            
-            EM_field = np.array([E,B], dtype = float)
-        else:
-            EM_field = np.zeros((2,3), dtype = float)
-
-        return EM_field
+       
+       #reshape just costs 1 µs  
+       return np.reshape((jit_EM_field(self.position,self.radius ,self.ladung,self.velocity,self.acceleration,R)),(2,3))
 
     @staticmethod
     def trial_integrate():
@@ -478,13 +472,15 @@ def stoss(i,bally):
                         bally.velocity = bally.velocity_2
                         bally2.velocity = bally2.velocity_2
                         
-             
-while not crashed :
-        
-    rate(60) 
+def main(): 
+    i = 0           
+    while i<400 :
             
-    if show_field == True :       
-        arrow_update(pointers)
-    Ball.trial_integrate()         
-        
+        rate(60) 
+                
+        if show_field == True :       
+            arrow_update(pointers)
+        Ball.trial_integrate()        
+        i+=1
+    
         
