@@ -31,7 +31,7 @@ rotation_matrix = np.array([[0,0,1],
                             [1,0,0]], dtype = int)
 planelement = 1/sqrt(2)
 
-Ball_num = 4
+Ball_num = 1
 c = 100
 dt= 1/60
 step = 40
@@ -209,8 +209,6 @@ class gui(object):
         
         
         
-        
-        
 
 
 class pointer(object):
@@ -319,7 +317,7 @@ class Ball(object):
         self.ladung = q
         self.color = c
         
-        self.manifest= sphere(pos = vector(self.position[0],self.position[1],self.position[2] ),radius = self.radius, color = self.color)
+        self.manifest= sphere(make_Trail = True, trail_radius = 1, pos = vector(self.position[0],self.position[1],self.position[2] ),radius = self.radius, color = self.color)
     
     @classmethod
     def from_string(cls, string):
@@ -348,8 +346,8 @@ class Ball(object):
         
 
         
-    def corrected_move(self):
-        a = Force_on_bally(tot_EM_field_at_charge(self.position), self)/self.mass                          
+    def corrected_move(self,hom_f):
+        a = Force_on_bally(tot_EM_field_at_charge(self.position), self)/self.mass  +hom_f                      
         self.position -= self.velocity*dt
         self.velocity += (a-self.acceleration)*dt/2  
         self.position += self.velocity*dt
@@ -401,7 +399,7 @@ class Ball(object):
        return np.reshape((jit_EM_field(self.position,self.radius ,self.ladung,self.velocity,self.acceleration,R)),(2,3))
 
     @staticmethod
-    def trial_integrate():
+    def trial_integrate(hom_force):
         
         for bally in ballys:
             bally.acceleration_compute(Force_on_bally(tot_EM_field_at_charge(bally.position), bally))
@@ -409,7 +407,7 @@ class Ball(object):
             
         for i,bally in enumerate(ballys):
                         
-            bally.corrected_move()
+            bally.corrected_move(hom_force)
             stoss(i,bally)
             bally.Edgelord()
             
@@ -417,7 +415,7 @@ ballys = []
 
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
-    ballys.insert(i, Ball(1,10,0.001,V = np.array([0,0,3], dtype = float), X = np.array([i*30, i*30 , i*30*0], dtype = float)))
+    ballys.insert(i, Ball(1,10,0.001,V = np.array([5,0,0], dtype = float), X = np.array([i*30-150, i*30 , i*30*0], dtype = float)))
     #ballys.insert(i, Ball(1,10,0.0001,V = np.array([10,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
     #ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
@@ -445,7 +443,7 @@ if show_field == True:
             
     pointers = np.array(pointers)        
 
-grav = np.array([0.,0.1,0.])
+grav = np.array([0.,-0.01,0.])
 angularVector = np.array([0.,0.,2])
 crashed = False
 index = 0
@@ -476,11 +474,19 @@ def main():
     i = 0           
     while i<400 :
             
-        rate(60) 
+        rate(60)
                 
         if show_field == True :       
             arrow_update(pointers)
         Ball.trial_integrate()        
         i+=1
-    
+        
+while 1 :
+        
+    rate(60)
+            
+    if show_field == True :       
+        arrow_update(pointers)
+    Ball.trial_integrate(grav)        
+        
         
