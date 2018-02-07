@@ -128,17 +128,50 @@ class gui(object):
     def __init__(self):
         
         self.run_button = button(pos = scene.title_anchor, bind = self.run, text = 'stop')
-        self.charge_button = button(pos = scene.title_anchor, bind = self.add_charge, text = 'add charge')
+        #self.charge_button = button(pos = scene.title_anchor, bind = self.add_charge, text = 'add charge')
+        self.arrow_button = button(pos = scene.title_anchor, bind = self.arrows, text = 'hide arrows')
         self.cnum_display  = wtext( text = ''.join(str(len(ballys)) + ' charges'))
-        self.text_field = wtext(pos = scene.title_anchor, text = 'm = 1; radius = 10; q = 0.0001; V = [10,0,0]; X = [-25, 0, 0]' )
+        #self.text_field = wtext(pos = scene.title_anchor, text = 'm = 1; radius = 10; q = 0.0001; V = [10,0,0]; X = [-25, 0, 0]' )
         scene.bind('keydown', self.keyInput)
         
-        self.trail_on = radio(bind = trail, text = 'show trail')       
+        wtext(text = 'Trail ')
+        self.trail_on = radio(bind = self.trail_show, text = 'on ')
+        self.trail_off = radio(bind = self.trail_hide, text = 'off ') 
         self.field_button = button(bind =self.add_field, text = 'add field ')
         scene.append_to_caption('\n\n')        
         self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
-        self.directions = ['x','y','z','-x','-y','-z','xy','xz','yz','-xy','-xz','-yz']        
+        self.directions = ['x','y','z','-x','-y','-z','xy','xz','yz','-xy','-xz','-yz']       
+        
         self.running = 1
+        self.show_field = 1
+    
+    
+    def view_arrow(self):
+        for arrow in pointers:
+            arrow.show.visible = self.show_field
+            
+    def arrows(self,b):
+        
+        self.show_field = not self.show_field
+        
+        if self.show_field: b.text = 'hide arrows'            
+        else: b.text = 'show arrows'
+        
+        self.view_arrow()
+        
+    def trail_show(self,b):
+        
+        for bally in ballys:
+            bally.manifest.make_trail = 1
+        b.checked = 1
+        self.trail_off.checked = 0
+        
+    def trail_hide(self,b):    
+        for bally in ballys:
+            bally.manifest.clear_trail()
+            bally.manifest.make_trail = 0
+        b.checked = 1
+        self.trail_on.checked = 0  
         
     def run(self,b): 
         
@@ -587,27 +620,26 @@ ballys.append(Ball(1,10,0.008,V = np.array([0,2,0], dtype = float), X = np.array
 ballys.append(Ball(1,10,0.008,V = np.array([0,0,0], dtype = float), X = np.array([-50,-50,0], dtype = float)))
 gwee = gui()
     
-if show_field == True:    
- #create pointer objects                  
-    pointer_grid_x = np.arange((-display['width']+10)/2, display['width']/2, step, dtype = int)
-    pointer_grid_y = np.arange((-display['height']+10)/2, display['height']/2, step, dtype = int)
-    pointer_grid_z = np.arange((-display['length']+10)/2, display['length']/2, step, dtype = int)
-                 
    
-    dim_x = pointer_grid_x.shape[0]  
-    dim_y = pointer_grid_y.shape[0]
-    dim_z = pointer_grid_y.shape[0]
-    
-    
-    
-    pointers = []
-    
-    for i in range(dim_x):
-        for j in range(dim_y):
-                for k in range(dim_z):
-                    pointers.append(pointer(20, pointer_grid_x[i], pointer_grid_y[j], pointer_grid_y[k]))
-            
-    pointers = np.array(pointers)        
+ #create pointer objects                  
+pointer_grid_x = np.arange((-display['width']+10)/2, display['width']/2, step, dtype = int)
+pointer_grid_y = np.arange((-display['height']+10)/2, display['height']/2, step, dtype = int)
+pointer_grid_z = np.arange((-display['length']+10)/2, display['length']/2, step, dtype = int)
+             
+   
+dim_x = pointer_grid_x.shape[0]  
+dim_y = pointer_grid_y.shape[0]
+dim_z = pointer_grid_y.shape[0]
+
+
+pointers = []
+
+for i in range(dim_x):
+    for j in range(dim_y):
+            for k in range(dim_z):
+                pointers.append(pointer(20, pointer_grid_x[i], pointer_grid_y[j], pointer_grid_y[k]))
+        
+pointers = np.array(pointers)        
 
 grav = np.array([0.,-0.01,0.])
 angularVector = np.array([0.,0.,2])
@@ -641,7 +673,7 @@ def main():
              
         rate(1/dt) 
         if gwee.running:              
-            if show_field == True :       
+            if gwee.show_field == True :       
                 arrow_update(pointers)
             S.midpoint(ballys)        
         i+=1
@@ -653,7 +685,7 @@ while 1:
        
     rate(1/dt)
           
-    if show_field == True : 
+    if gwee.show_field == True : 
         arrow_update(pointers)
     S(ballys) 
     
