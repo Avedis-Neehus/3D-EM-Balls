@@ -18,12 +18,11 @@ display = { 'width' : 200,
             'height' : 200,
             'length' : 200}
 
-
-wallR = box(pos= vector(display['width']/2,0,0), size=vector(0.2,200,200), color=color.green)
-wallL = box(pos=vector(-display['width']/2,0,0), size= vector(0.2,200,200), color=color.green)
-wallD = box(pos=vector(0,display['height']/2,0), size= vector(200,0.2,200), color=color.red)
-wallU = box(pos=vector(0,-display['height']/2,0), size= vector(200,0.2,200), color=color.red)
-wallF = box(pos=vector(0,0,-display['length']/2), size= vector(200,200,0.2), color=color.yellow)
+walls =    [box(pos= vector(display['width']/2,0,0), size=vector(0.2,200,200), color=color.green),
+     box(pos=vector(-display['width']/2,0,0), size= vector(0.2,200,200), color=color.green),
+     box(pos=vector(0,display['height']/2,0), size= vector(200,0.2,200), color=color.red),
+     box(pos=vector(0,-display['height']/2,0), size= vector(200,0.2,200), color=color.red),
+     box(pos=vector(0,0,-display['length']/2), size= vector(200,200,0.2), color=color.yellow)]
 
 electrodynamics = True
 show_field = True
@@ -125,13 +124,21 @@ def Force_on_bally(field, charge):
 
 class gui(object):
     
+    
     def __init__(self):
         
+        
         self.run_button = button(pos = scene.title_anchor, bind = self.run, text = 'stop')
-        #self.charge_button = button(pos = scene.title_anchor, bind = self.add_charge, text = 'add charge')
+        self.charge_button = button(pos = scene.title_anchor, bind = self.add_charge, text = 'add charge')
         self.arrow_button = button(pos = scene.title_anchor, bind = self.arrows, text = 'hide arrows')
+        self.box_button = button( bind = self.box, text = 'hide box')
+        
+        self.integrator = integriere(ballys,hist) 
+        self.int_menue = menu(choices = ['choose an integrator', 'Eul-Rich', 'AM4', 'DAM5'], bind = self.select_int)
+        self.int_method = self.integrator.Eul_Rich
+        
         self.cnum_display  = wtext( text = ''.join(str(len(ballys)) + ' charges'))
-        #self.text_field = wtext(pos = scene.title_anchor, text = 'm = 1; radius = 10; q = 0.0001; V = [10,0,0]; X = [-25, 0, 0]' )
+        self.text_field = wtext(pos = scene.title_anchor, text = 'm = 1; radius = 10; q = 0.0001; V = [10,0,0]; X = [-25, 0, 0]' )
         scene.bind('keydown', self.keyInput)
         
         wtext(text = 'Trail ')
@@ -144,11 +151,26 @@ class gui(object):
         
         self.running = 1
         self.show_field = 1
-    
-    
-    def view_arrow(self):
-        for arrow in pointers:
-            arrow.show.visible = self.show_field
+        self.show_box = 1
+        
+    def box(self,b):
+        self.show_box = not self.show_box        
+        
+        if self.show_box: b.text = 'hide box'            
+        else: b.text = 'show box'
+        
+        self.visible(walls,self.show_box)
+        
+    def select_int(self,m):
+        
+        val = m.selected
+        if val == 'Eul-Rich': self.int_method = self.integrator.Eul_Rich
+        elif val == 'DAM5': self.int_method = self.integrator.DAM
+        
+    @staticmethod    
+    def visible(objs,boo):
+        for obj in objs:
+            obj.visible = boo
             
     def arrows(self,b):
         
@@ -157,7 +179,7 @@ class gui(object):
         if self.show_field: b.text = 'hide arrows'            
         else: b.text = 'show arrows'
         
-        self.view_arrow()
+        self.visible(pointers,self.show_field)
         
     def trail_show(self,b):
         
@@ -302,8 +324,15 @@ class pointer(object):
         self.position_2 = np.array([20,0,0])
         
         self.show = arrow(pos = vector(self.position[0],self.position[1],self.position[2] ), axis = vector(self.position_2[0],self.position_2[1],self.position_2[2] ))                
+               
+    @property
+    def visible(self):
+        return self.show.visible
+    
+    @visible.setter
+    def visible(self,boo):
+        self.show.visible = boo
         
-
     def direction(self):
         
         field = tot_EM_field_at_charge(self.position)
@@ -408,14 +437,15 @@ class integriere(object):
                                         246,
                                         -96,
                                          17])
-    def __init__(self,SSH):
-    
+    def __init__(self,SS,SSH):
+        
+        self.SS =SS
         self.SSH = SSH
         self.hom_force = np.zeros(3)
     #SS system state: An array of states; SFH an array of force matrices with rg 4
-    def pred(self,SS):        
+    def pred(self):        
         
-        for state in SS:
+        for state in self.SS:
             self.AM4(state)
         
     def AM4(self,state): 
@@ -424,12 +454,12 @@ class integriere(object):
         
         state.position = state.position +state.velocity*dt + self.pred_pos_coef@state.fh*dt**2
         
-    def corr(self,SS):
+    def corr(self):
         #doesnt work with retarded fields
-        for state in SS:            
+        for state in self.SS:            
            state.fh_update()
           
-        for state_n,state_n1 in zip(self.SSH[0], SS):
+        for state_n,state_n1 in zip(self.SSH[0], self.SS):
             
             self.AB5(state_n, state_n1)
             
@@ -439,23 +469,24 @@ class integriere(object):
         state_n1.position = state_n.position +state_n.velocity*dt + self.corr_pos_coef@state_n1.fh*dt**2
         state_n1.acceleration = state_n1.fh[0]
         
-    @staticmethod     
-    def  correct_f(SS):  
         
-        for state in SS:
+    def  correct_f(self):  
+        
+        for state in self.SS:
             
             state.fh.popleft()
             state.fh.pop()
             state.fh_update()
             
-        for i, state in enumerate(SS):    
+        for i, state in enumerate(self.SS):    
             state.acceleration = state.fh[0]
             stoss(i,state)
             #bally.Edgelord()
             state.manifest.pos = vector(state.position[0],state.position[1],state.position[2])
             
-    def midpoint(self,ballys): 
+    def Eul_Rich(self): 
         
+        ballys = self.SS
         for bally in ballys:
             bally.fh_update()
             
@@ -469,18 +500,25 @@ class integriere(object):
                         
             bally.corrected_move(self.hom_force)
             stoss(i,bally)
-            bally.Edgelord()
+            #bally.Edgelord()
+           
+        
+        
+    def DAM(self):
+        bally = self.SS        
+        try:
+            self.SSH.appendleft(list(map(copy,ballys)))
+                    
+            self.pred()        
+            self.corr()
+            self.correct_f()
             
-        
-        
-    def __call__(self, ballys):
-              
-        self.SSH.appendleft(list(map(copy,ballys)))
-                
-        self.pred(ballys)        
-        self.corr(ballys)
-        self.correct_f(ballys)
-        
+        except ValueError:              
+            self.Eul_Rich()  
+            
+            if len(ballys[0].fh) == 5:
+                for bally in ballys:
+                    bally.fh.pop()
 class basic_Ball():
     
     __slots__ =('position','velocity','acceleration','mass','radius','ladung')
@@ -665,8 +703,7 @@ def stoss(i,bally):
                     bally.velocity = bally.velocity_2
                     bally2.velocity = bally2.velocity_2
       
-S = integriere(hist)  
-     
+
 def main(): 
     i = 0           
     while 1 :
@@ -675,7 +712,7 @@ def main():
         if gwee.running:              
             if gwee.show_field == True :       
                 arrow_update(pointers)
-            S.midpoint(ballys)        
+            gwee.int_method()        
         i+=1
 main()
 for bally in ballys:
