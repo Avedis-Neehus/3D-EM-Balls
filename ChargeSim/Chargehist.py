@@ -92,7 +92,13 @@ def getmet(cls, private = False):
         return [method for method in dir(cls) if callable(getattr(cls, method)) ]
     else:
         return [method for method in dir(cls) if (callable(getattr(cls, method)) and method[0] != '_')]
-        
+    
+def scalemeters(factor):
+    global mu,epsilon,c
+    mu*=factor
+    epsilon *= factor**-3
+    c*=factor
+    
 def retarded_ballys(location):
 
         new_ballys = np.zeros(Ball_num, dtype = object)
@@ -117,7 +123,7 @@ def tot_EM_field(location):
 
     EM = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
 
-    for q in retarded_ballys(location):
+    for q in ballys:#retarded_ballys(location):
 
         EM = EM + q.EM_field(location)
 
@@ -126,9 +132,8 @@ def tot_EM_field(location):
 
 
 def Force_on_bally(field, charge):
-    
-    force = charge.ladung*(field[0] + cross(charge.velocity, field[1]))
-    return force
+        
+    return charge.ladung*(field[0] + cross(charge.velocity, field[1]))
 
 class stat_field(object):
     
@@ -164,12 +169,20 @@ class stat_field(object):
         return np.array([f,[0.,0.,0.]])
     
     @staticmethod
+    def lin_B_in_Z(R):
+        return np.array([[0.,0.,0.],[R[0],0.,0]])/200
+    
+    @staticmethod
     def toroidal(R):       
             r = R[0]**2 +R[2]**2
             if r == 0:
                 r = 0.001
             return 100*np.array([[0.,0.,0.],[-R[2],0.,R[0]]])/r  
         
+    @staticmethod
+    def linEz(R):
+        return 10*np.array([[0.,R[1],0.],[0.,0.,0]])
+         
 cust_field = stat_field()   
   
 class gui(object):
@@ -195,10 +208,10 @@ class gui(object):
         
         self.config_button = button(bind = self.run_conf, text = 'run config')
         
-        wtext(text = 'Trail ')
+        wtext(text = '      Trail ')
         self.trail_on = radio(bind = self.trail_show, text = 'on ')
         self.trail_off = radio(bind = self.trail_hide, text = 'off ') 
-        self.field_button = button(bind =self.add_field, text = 'add field ')
+        #self.field_button = button(bind =self.add_field, text = 'add field ')
         scene.append_to_caption('\n\n')        
         self.extra_field   = np.array([[0.,0.,0.],[0.,0.,0.]], dtype = float)
         self.directions = ['x','y','z','-x','-y','-z','xy','xz','yz','-xy','-xz','-yz']       
@@ -206,6 +219,9 @@ class gui(object):
         self.running = 1
         self.show_field = 1
         self.show_box = 1
+        
+        self.add_field()
+        self.box(self.box_button)
         
     def run_conf(self):
         execfile('confi.py', globals = globals())
@@ -411,7 +427,7 @@ class pointer(object):
         field_mag= norm(field)
         
         try:            
-            return  -field/field_mag
+            return  field/field_mag
     
         except ZeroDivisionError:
             return np.array([self.length,0,0])
@@ -620,7 +636,7 @@ class basic_Ball():
 class Ball(basic_Ball):
     
     
-    def __init__(self, m = 1, radius = 10, q = -0.008,A = np.array([0,0,0], dtype = float) ,V = np.array([0,0,0], dtype = float),
+    def __init__(self, m = 1, radius = 10, q = -0.0008,A = np.array([0,0,0], dtype = float) ,V = np.array([0,0,0], dtype = float),
                                                                    X = np.array([0,0,0],dtype = float), c = vector(255,0,0)):
         
         super().__init__(m , radius , q , X,V,A )
@@ -665,9 +681,8 @@ class Ball(basic_Ball):
     def visible(self,boo):
         self.manifest.visible = boo
         
-    def force(self, hom_f):
-        
-        return (Force_on_bally(tot_EM_field(self.position), self)+ hom_f)/(self.mass*gamma(self.velocity)**3)  
+    def force(self, hom_f):        
+        return (Force_on_bally(tot_EM_field(self.position), self)+ hom_f)/(self.mass)  
 
     def fh_update(self, hom_f = np.zeros(3)):
         self.fh.appendleft(self.force(hom_f))
@@ -738,16 +753,16 @@ ballys = []
 
 for i in range(Ball_num):
     #ballys.insert(i, Ball(r.randrange(300,display['width'] - 5, 10),r.randrange(200,display['height']/2,1)   , r.randrange(5,10,1),(r.randint(1,255),r.randint(1,255),r.randint(1,255)), r.randint(-200,200)/1000, r.randint(-200,200)/1000))
-    ballys.insert(i, Ball(1,10,-0.008,V = np.array([0,0,0*5*(-1)**(2+i)], dtype = float), X = np.array([i*30*(-1)**(2+i) , i*30*(-1)**(1+i) , i*30*(-1)**(2+i)], dtype = float)))
+    ballys.insert(i, Ball(1,10,-0.008,V = np.array([15,0,0*5*(-1)**(2+i)], dtype = float), X = np.array([i*30*(-1)**(2+i) , i*30*(-1)**(1+i) , i*30*(-1)**(2+i)], dtype = float)))
     #ballys.insert(i, Ball(1,10,0.0001,V = np.array([10,0,0], dtype = float), X = np.array([-25, 0, 0], dtype = float)))
     #ballys.insert(i, Ball(1,10,-0.0001,V = np.array([0,0,3], dtype = float), X = np.array([25, 0, 0], dtype = float)))
 #ballys.append(Ball(1,-0.0004,V = np.array([0,0,0], dtype = float), X = np.array([0,0,0], dtype = float))) 
 #ballys.append(Ball(1,10,0.008,V = np.array([0,2,0], dtype = float), X = np.array([50,50,0], dtype = float)))
-#ballys.append(Ball(1,10,0.008,V = np.array([0,0,0], dtype = float), X = np.array([-50,-50,0], dtype = float)))
+#ballys.append(Ball(1,10,-0.01,V = np.array([0,0,0], dtype = float), X = np.array([-50,-50,0], dtype = float)))
 gwee = gui()
     
    
- #create pointer objects                  
+                 
 pointer_grid_x = np.arange((-display['width']+10)/2, display['width']/2, step, dtype = int)
 pointer_grid_y = np.arange((-display['height']+10)/2, display['height']/2, step, dtype = int)
 pointer_grid_z = np.arange((-display['length']+10)/2, display['length']/2, step, dtype = int)
@@ -774,6 +789,7 @@ index = 0
 
 
 def arrow_update(zeigers):
+    
     for zeiger in zeigers:                 
         zeiger.dic_update()
         
@@ -792,7 +808,8 @@ def stoss(i,bally):
                     bally.velocity = bally.velocity_2
                     bally2.velocity = bally2.velocity_2
                     
-def new_charges(n=1,values = None):      
+def new_charges(n=1,values = None):   
+    
     global ballys
     gui.visible(ballys,0)
     gwee.integrator = integriere()
@@ -802,12 +819,13 @@ def new_charges(n=1,values = None):
           
         for i in range(n):
             ballys.append(Ball(X = 20*np.random.random((3,))))
-    else:      
+    else: 
+        
         for value in values:
             ballys.append(Ball.from_string(value))
-    gwee.int_method = integriere(ballys)        
+            
 
-print(retarded_ballys(np.array([1,2,3.])))           
+          
 while 1 :
          
     rate(1/dt) 
